@@ -1,8 +1,7 @@
-#! /usr/bin/python
-# *-* conding:utf8 *-*
+#-*- coding: UTF-8 -*-
 
 from math import sqrt
-from rawdata import *
+from rawdata import users,critics
 import sys
 
 def manhattan(prefer,person1,person2):
@@ -54,16 +53,59 @@ def pearson(prefer,person1,person2):
     if den==0 : return 0
     return num/den
 
-def nearest(prefer,person,military=euclidean,n=3):
-    nearestlist = [ (military(prefer,person,user),user)  for user in prefer if user!=person]
+def topMatches(prefer,person,similarity=euclidean,n=3):
+    nearestlist = [ (similarity(prefer,person,user),user)  for user in prefer if user!=person]
     nearestlist.sort()
     nearestlist.reverse()
     return nearestlist[0:n]
-#print nearest(users,'Hailey',pearson)
-dictmp = {}
-for person in critics:
-    tmpvalue = nearest(critics,person)
-    dictmp[person] = tmpvalue
-for key in dictmp:
-    print key + ":" 
-    print dictmp[key]
+#print topMatches(users,'Hailey',pearson)
+# dictmp = {}
+# for person in critics:
+#     tmpvalue = topMatches(critics,person)
+#     dictmp[person] = tmpvalue
+# for key in dictmp:
+#     print key + ":" 
+#     print dictmp[key]
+
+#利用所有人他人评价值的加权平均，为某人提供推荐
+def getRecommendations(prefer,person,similarity=pearson):
+    totals = {}
+    simsum = {}
+    for other in prefer:
+        #不能和自己比较
+        if other == person: continue
+        # 计算出2个人的相似度
+        sim = similarity(prefer,person,other)
+        if sim <= 0:continue
+        for item in prefer[other]:
+            if item not in prefer[person] or prefer[person][item]==0:
+                totals.setdefault(item,0)
+                totals[item] += sim*prefer[other][item]
+                simsum.setdefault(item,0)
+                simsum[item] += sim
+
+    rankings = [(totals[item]/simsum[item],item) for item in totals]
+    rankings.sort
+    rankings.reverse()
+    return rankings
+# print getRecommendations(critics,'Toby')
+
+
+"""
+critics={'Lisa Rose': {'Lady in the Water': 2.5, 'Snakes on a Plane': 3.5,
+ 'Just My Luck': 3.0, 'Superman Returns': 3.5, 'You, Me and Dupree': 2.5, 
+ 'The Night Listener': 3.0},
+'Gene Seymour': {'Lady in the Water': 3.0, 'Snakes on a Plane': 3.5, 
+ 'Just My Luck': 1.5, 'Superman Returns': 5.0, 'The Night Listener': 3.0, 
+ 'You, Me and Dupree': 3.5}}
+"""
+def transformPrefers(prefer):
+    resuslt = {}
+    for person in prefer:
+        for  item in prefer[person]:
+            resuslt.setdefault(item,{})
+            resuslt[item][person]= prefer[person][item]
+
+    return resuslt
+books = transformPrefers(critics)
+print topMatches(books,"Superman Returns",pearson)
